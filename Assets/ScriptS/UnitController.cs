@@ -1,14 +1,23 @@
-// UnitController.cs
+Ôªø// UnitController.cs
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 [RequireComponent(typeof(CharacterController))]
 public class UnitController : MonoBehaviour
 {
+    public GameObject SaveManager;
+    private RootSave rootSave;
+
     public AStarPathfinder pathfinder;
     public GridManager3D gridManager;
     public float moveSpeed = 4f;
+
+    public int movePoint = 0;
+
+    public float timeDl = 0;
+    private List<Vector3> trunPoint = new List<Vector3>();
 
     private List<Node> path;
     private int pathIndex = 0;
@@ -20,11 +29,12 @@ public class UnitController : MonoBehaviour
     void Start()
     {
         controller = GetComponent<CharacterController>();
+        rootSave = SaveManager.GetComponent<RootSave>();
     }
 
     void Update()
     {
-        // ∏∂øÏΩ∫ øÏ≈¨∏Ø¿∏∑Œ ∏Ò¿˚¡ˆ ¡ˆ¡§
+        // ÎßàÏö∞Ïä§ Ïö∞ÌÅ¥Î¶≠ÏúºÎ°ú Î™©Ï†ÅÏßÄ ÏßÄÏ†ï
         if (Input.GetMouseButtonDown(1) && !moveStart)
         {
             Ray r = Camera.main.ScreenPointToRay(Input.mousePosition);
@@ -40,9 +50,10 @@ public class UnitController : MonoBehaviour
         if(moveStart)
         {
             StopAllCoroutines();
+            timeDl += Time.deltaTime;
             if (path != null && path.Count > 0)
                 StartCoroutine(FollowPath());
-               
+
         }
     }
 
@@ -51,21 +62,28 @@ public class UnitController : MonoBehaviour
         while (pathIndex < path.Count)
         {
             Vector3 targetPos = path[pathIndex].worldPosition;
-            // ∏Ò«•±Ó¡ˆ ºˆ∆Ú ¿Ãµø (Y ¿Ø¡ˆ)
+            // Î™©ÌëúÍπåÏßÄ ÏàòÌèâ Ïù¥Îèô (Y Ïú†ÏßÄ)
             Vector3 moveTarget = new Vector3(targetPos.x, transform.position.y, targetPos.z);
             while (Vector3.Distance(transform.position, moveTarget) > 0.05f)
             {
                 Vector3 dir = (moveTarget - transform.position).normalized;
                 controller.Move(dir * moveSpeed * Time.deltaTime);
+                if(timeDl >=0.1f)
+                {
+                    rootSave.saveingRoot(transform.position);
+                    timeDl = 0;
+                }
                 yield return null;
             }
             pathIndex++;
-            moveStart = false;
             yield return null;
         }
+        movePoint++;
+        rootSave.endRoot(transform.position);
+        moveStart = false;
     }
 
-    // µπˆ±◊: ∞Ê∑Œ «•Ω√
+    // ÎîîÎ≤ÑÍ∑∏: Í≤ΩÎ°ú ÌëúÏãú
     void OnDrawGizmos()
     {
         if (path == null) return;
@@ -80,4 +98,40 @@ public class UnitController : MonoBehaviour
     {
         moveStart = true;
     }
+
+
+    IEnumerator TrunStackMove(Stack<Vector3> turnStackPoint)
+    {
+        moveStart = false;
+
+        // turnStackPoint ÏûêÏ≤¥Í∞Ä Ïù¥ÎØ∏ Î≥µÏÇ¨Î≥∏Ïù¥Î©¥ ÏïàÏ†ÑÌïòÍ≤å Pop() ÏÇ¨Ïö© Í∞ÄÎä•
+        while (turnStackPoint != null && turnStackPoint.Count > 0)
+        {
+            Vector3 targetPos = turnStackPoint.Pop();
+
+            // Ïù¥Îèô Ï≤òÎ¶¨: Ïó¨Í∏∞ÏÑúÎäî transform.Lerp ÏÇ¨Ïö© (CharacterController Ïì∞Î©¥ controller.MoveÎ°ú Î≥ÄÍ≤Ω)
+            Vector3 startPos = transform.position;
+            float t = 0f;
+            float moveTime = 0.2f;
+
+            while (t < 1f)
+            {
+                t += Time.deltaTime / moveTime;
+                transform.position = Vector3.Lerp(startPos, targetPos, t);
+                yield return null;
+            }
+            transform.position = targetPos;
+        }
+
+        moveStart = false;
+    }
+
+
+    public void TrunMoveStackEvent()
+    {
+        Stack<Vector3> savedPath = rootSave.GetPath();
+
+        StartCoroutine(TrunStackMove(savedPath));
+    }
+
 }
