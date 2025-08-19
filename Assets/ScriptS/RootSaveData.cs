@@ -12,7 +12,4 @@ public class RootSaveData : ScriptableObject
     private List<Vector3> saveRoot;
     public List<Vector3> SaveRoot => saveRoot;
 
-
-
-
 }

@@ -96,7 +96,8 @@ public class UnitController : MonoBehaviour
 
     public void SetStartMoveEvnet()
     {
-        moveStart = true;
+        GameObject.Find("SaveRoot").GetComponent<RootSave>().RootClear();
+        moveStart = true;       
     }
 
 
@@ -129,7 +130,18 @@ public class UnitController : MonoBehaviour
 
     public void TrunMoveStackEvent()
     {
-        Stack<Vector3> savedPath = rootSave.GetPath();
+        var copy = new List<Vector3>();
+        copy = rootSave.TurnRootUnit();
+        Stack<Vector3> savedPath = new Stack<Vector3>(copy); ;
+
+        StartCoroutine(TrunStackMove(savedPath));
+    }
+
+    public void CallMoveEvent()
+    {
+        var copy = new List<Vector3>();
+        copy = rootSave.SetCallRoot();
+        Stack<Vector3> savedPath = new Stack<Vector3>(copy); ;
 
         StartCoroutine(TrunStackMove(savedPath));
     }
